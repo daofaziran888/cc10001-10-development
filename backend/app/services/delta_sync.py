@@ -34,6 +34,24 @@ class DeltaSyncService:
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)
 
+    def list_configs(self) -> list[dict[str, Any]]:
+        """返回同步水位的真实配置：上次/当前水位、增量字段、同步周期与批次统计。"""
+        configs: list[dict[str, Any]] = []
+        for row in store.rows(MODULE):
+            configs.append({
+                "id": int(row.get("id", 0)),
+                "水位编号": row.get("水位编号", ""),
+                "源数据集": row.get("源数据集", ""),
+                "增量字段": row.get("增量字段", ""),
+                "上次水位": row.get("上次水位", ""),
+                "当前水位": row.get("当前水位", ""),
+                "同步周期": row.get("同步周期", ""),
+                "捕获行数": row.get("捕获行数", "0"),
+                "最后同步": row.get("最后同步", ""),
+                "status": row.get("status", STATUS_ORDER[0]),
+            })
+        return configs
+
     def create_entry(self, values: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
         missing = [f for f in REQUIRED_FIELDS if not str(values.get(f) or "").strip()]
         if missing:

@@ -22,7 +22,9 @@ class Store:
         self._joint: dict[str, list[dict[str, Any]]] = {
             "pipeline_state": [],      # 流水线执行状态与产物
             "audit_records": [],       # 质量审计记录
-            "sync_positions": [],      # 增量同步水位
+            "sync_positions": [],      # 增量同步位置
+            "delta_batches": [],       # 增量批次数据集（水位区间与捕获记录）
+            "source_registry": [],     # 源记录键登记（保证一条源记录只计入一个批次）
             "dispatch_logs": [],       # 数据分发日志
             "proxy_assignments": [],   # 代理分配记录
             "cookie_rotations": [],    # 凭证轮换记录
@@ -93,6 +95,15 @@ class Store:
     def joint_append(self, key: str, record: dict[str, Any]) -> None:
         self._joint.setdefault(key, []).append(record)
         self._save_joint(key)
+
+    def joint_update(self, key: str, record: dict[str, Any]) -> None:
+        """按 id 原地更新一条联合存储记录并落盘。"""
+        for index, row in enumerate(self.joint_rows(key)):
+            if int(row.get("id", 0)) == int(record.get("id", 0)):
+                self._joint[key][index] = record
+                self._save_joint(key)
+                return
+        raise KeyError(f"联合存储 {key} 中不存在记录 {record.get('id')}")
 
     def joint_find(self, key: str, record_id: int) -> dict[str, Any] | None:
         for row in self.joint_rows(key):

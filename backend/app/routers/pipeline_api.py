@@ -30,6 +30,7 @@ class AuditBatchPayload(BaseModel):
 
 class CaptureSyncPayload(BaseModel):
     sync_id: int
+    target_watermark: str | None = None
 
 
 class DispatchBatchPayload(BaseModel):
@@ -133,7 +134,7 @@ def get_audit_record(record_id: int) -> dict:
 
 @router.post("/sync/capture")
 def capture_increment(payload: CaptureSyncPayload) -> dict:
-    res = delta_tracker.capture_increment(payload.sync_id)
+    res = delta_tracker.capture_increment(payload.sync_id, payload.target_watermark)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error"))
     return res
@@ -155,6 +156,16 @@ def get_sync_position(position_id: int) -> dict:
     if pos is None:
         raise HTTPException(status_code=404, detail=f"同步位置 {position_id} 不存在")
     return pos
+
+
+@router.get("/sync/batches")
+def list_sync_batches(sync_id: int | None = None) -> list:
+    return delta_tracker.list_batches(sync_id)
+
+
+@router.get("/sync/registry")
+def list_sync_registry(dataset: str | None = None) -> list:
+    return delta_tracker.list_registry(dataset)
 
 
 # ---------- 数据分发 ----------
